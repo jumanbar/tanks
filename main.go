@@ -24,9 +24,6 @@ const (
 	screenWidth  = 548
 	screenHeight = 336
 
-	fieldWidth  = 416
-	fieldHeight = 336
-
 	// Assume square:
 	frameSize = 100.0 // Original size of png region (square)
 	// frameWidth  = 32.0
@@ -43,6 +40,8 @@ type Game struct {
 }
 
 var (
+	fieldWidth  = 416.0
+	fieldHeight = 336.0
 	blockSize   float64
 	cellSize    float64
 	playerScale float64
@@ -50,15 +49,21 @@ var (
 	tankDown    *ebiten.Image
 	tankLeft    *ebiten.Image
 	tankRight   *ebiten.Image
+    fieldImage  *ebiten.Image
 )
 
 func init() {
-	blockSize = fieldHeight / 13.0
-    if (fieldHeight > fieldWidth) {
-        blockSize = fieldWidth / 13.0
+    // field must be square:
+    if fieldWidth > fieldHeight {
+        fieldWidth = fieldHeight
     }
+    if fieldWidth < fieldHeight {
+        fieldWidth = fieldHeight
+    }
+	blockSize = fieldWidth / 13.0
 	cellSize = blockSize / 4.0 // 1 Block == 16 cells (4x4)
 	playerScale = blockSize / frameSize
+
 
 	// https://www.deviantart.com/leetzero/art/Tanks-339084110
 	// CC Atribution Non Comercial Share Alike 3.0 CC-By-NC-SA
@@ -79,12 +84,17 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+    fieldImage , _, err = ebitenutil.NewImageFromFile("field.png")
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 type tank struct {
 	x      float64
 	y      float64
-	hitbox [2][2]int
+	hitbox [2][2]float64
 	dir    int8
 	vx     float64
 	vy     float64
@@ -116,6 +126,18 @@ func (t *tank) update() {
 	t.vy0 = t.vy
 	t.x += t.vx
 	t.y += t.vy
+    if t.x > fieldHeight - blockSize {
+        t.x = fieldHeight - blockSize
+    }
+    if t.x < 0 {
+        t.x = 0
+    }
+    if t.y > fieldHeight - blockSize {
+        t.y = fieldHeight - blockSize
+    }
+    if t.y < 0  {
+        t.y = 0
+    }
 	t.vx = 0
 	t.vy = 0
 }
@@ -136,28 +158,28 @@ func (g *Game) Update() error {
 		g.player.vy = -cellSize/4
 		g.player.dir = 0
 		g.player.update()
-		g.player.debug = "^"
+		g.player.debug = "^\n|"
 		return nil
 	}
 	if (ebiten.IsKeyPressed(ebiten.KeyArrowDown) || ebiten.IsKeyPressed(ebiten.KeyJ)) && g.player.vy0 >= 0 && g.player.vx0 == 0 {
 		g.player.vy = cellSize/4
 		g.player.dir = 2
 		g.player.update()
-		g.player.debug = "v"
+		g.player.debug = "|\nv"
 		return nil
 	}
 	if (ebiten.IsKeyPressed(ebiten.KeyArrowRight) || ebiten.IsKeyPressed(ebiten.KeyL)) && g.player.vx0 >= 0 && g.player.vy0 == 0 {
 		g.player.vx = cellSize/4
 		g.player.dir = 1
 		g.player.update()
-		g.player.debug = "->"
+		g.player.debug = "->\n"
 		return nil
 	}
 	if (ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyH)) && g.player.vx0 <= 0 && g.player.vy0 == 0 {
 		g.player.vx = -cellSize/4
 		g.player.dir = 3
 		g.player.update()
-		g.player.debug = "<-"
+		g.player.debug = "<-\n"
 		return nil
 	}
 	g.player.vx0 = 0
@@ -167,16 +189,20 @@ func (g *Game) Update() error {
         return ebiten.Termination
     }
 
-
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+    op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(fieldWidth/336, fieldHeight/336)
+    screen.DrawImage(fieldImage, op)
 	g.player.draw(screen)
-	// Show the message.
-    // Display the information with "X: xx, Y: xx" format
-	msg := fmt.Sprintf("TPS: %0.2f\n%s\n(x,y)=(%.2f, %.2f)\n(vx0, vy0)=(%.2f, %.2f)\nblockSize: %.2f\ncellSize: %.2f", ebiten.ActualTPS(), g.player.debug, g.player.x, g.player.y, g.player.vx0, g.player.vy0, blockSize, cellSize)
     x, y := ebiten.CursorPosition()
+	msg := fmt.Sprintf("TPS: %0.2f\n%s", ebiten.ActualFPS(), g.player.debug)
+    msg += fmt.Sprintf("\n(x,y)=(%.2f, %.2f)", g.player.x, g.player.y)
+    msg += fmt.Sprintf("\n(vx0, vy0)=(%.2f, %.2f)", g.player.vx0, g.player.vy0)
+    msg += fmt.Sprintf("\nblockSize: %.2f\ncellSize: %.2f", blockSize, cellSize)
+    msg += fmt.Sprintf("\nfieldWidth: %.2f\nfieldHeight: %.2f", fieldWidth, fieldHeight)
     msg += fmt.Sprintf("\nX: %d, Y: %d", x, y)
     msg += fmt.Sprintf("\nScale: %.2f", playerScale)
 	ebitenutil.DebugPrint(screen, msg)
