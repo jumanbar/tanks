@@ -50,6 +50,7 @@ var (
 	tankLeft    *ebiten.Image
 	tankRight   *ebiten.Image
     fieldImage  *ebiten.Image
+    brickImage  *ebiten.Image
 )
 
 func init() {
@@ -86,6 +87,10 @@ func init() {
 	}
 
     fieldImage , _, err = ebitenutil.NewImageFromFile("field.png")
+	if err != nil {
+		log.Fatal(err)
+	}
+    brickImage , _, err = ebitenutil.NewImageFromFile("field.png")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -196,6 +201,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
     op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(fieldWidth/336, fieldHeight/336)
     screen.DrawImage(fieldImage, op)
+    op = &ebiten.DrawImageOptions{}
+    op.GeoM.Scale(playerScale, playerScale)
+    screen.DrawImage(brickImage, op)
 	g.player.draw(screen)
     x, y := ebiten.CursorPosition()
 	msg := fmt.Sprintf("TPS: %0.2f\n%s", ebiten.ActualFPS(), g.player.debug)
